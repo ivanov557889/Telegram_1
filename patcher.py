@@ -5,8 +5,8 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC  = os.path.join(ROOT, "TMessagesProj", "src", "main", "java")
 
 # API CREDENTIALS
-API_ID = "35789244"
-API_HASH = "19af129f5ac4eb7163b473ec9f7c2aa3"
+API_ID = "2040"
+API_HASH = "b18441a1ff607e10a989891a5462e627"
 
 def find_file(name):
     for dp, _, files in os.walk(SRC):
@@ -270,15 +270,15 @@ public class WeryGramPremiumActivity extends BaseFragment {
         root.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
         addRow(context, root,
             "Visual Premium",
-            "\u0414\u0430\u0451\u0442 \u0432\u0438\u0437\u0443\u0430\u043b\u044c\u043d\u043e Telegram Premium",
+            "Дает визуально Telegram Premium",
             "wery_visual_premium", null);
         addRow(context, root,
-            "\u0420\u0435\u0436\u0438\u043c \u041f\u0440\u0438\u0437\u0440\u0430\u043a\u0430",
-            "\u0412\u044b \u0431\u0443\u0434\u0435\u0442\u0435 \u0432 \u0441\u0442\u0430\u0442\u0443\u0441\u0435 \u043d\u0435\u0432\u0438\u0434\u0438\u043c\u043a\u0438, \u043f\u0440\u0438 \u043f\u043e[...]
+            "Режим Призрака",
+            "Вы будете в статусе невидимки, при по",
             "wery_ghost_mode", null);
         addRow(context, root,
-            "\u0423\u0434\u0430\u043b\u0451\u043d\u043d\u044b\u0435 \u043f\u043e\u0434\u0430\u0440\u043a\u0438",
-            "\u0412\u044b \u043c\u043e\u0436\u0435\u0442\u0435 \u0434\u0430\u0440\u0438\u0442\u044c \u0443\u0434\u0430\u043b\u0451\u043d\u043d\u044b\u0435 \u043f\u043e\u0434\u0430\u0440\u043a\u0438",
+            "Удалённые подарки",
+            "Вы можете дарить удалённые подарки",
             "wery_deleted_gifts",
             () -> { WeryGramGifts.reset(); WeryGramGifts.injectDeletedGifts(account); });
         fragmentView = root;
@@ -301,6 +301,7 @@ def patch_user_config(errors):
     for ch in text[line_start:ret_pos]:
         if ch in (' ','\t'): indent += ch
         else: break
+    
     patch = (
         indent + 'try {\n' +
         indent + '    android.content.SharedPreferences __p = org.telegram.messenger.MessagesController.getGlobalMainSettings();\n' +
@@ -317,18 +318,18 @@ def patch_user_config(errors):
         indent + '        if(currentUser.profile_color!=null){\n' +
         indent + '            int __cc=currentUser.profile_color.color;long __ce=currentUser.profile_color.background_emoji_id;\n' +
         indent + '            if(__cc>=0||__ce!=0){__p.edit().putInt("wery_pcolor_id",__cc).putLong("wery_pcolor_emoji",__ce).apply();}\n' +
-        indent + '            else{int __sp=__p.getInt("wery_pcolor_id",-1);long __se=__p.getLong("wery_pcolor_emoji",0);if(__sp>=0)currentUser.profile_color.color=__sp;if(__se!=0)currentUser.profile_[...]
+        indent + '            else{int __sp=__p.getInt("wery_pcolor_id",-1);long __se=__p.getLong("wery_pcolor_emoji",0);if(__sp>=0)currentUser.profile_color.color=__sp;if(__se!=0)currentUser.profile_color.background_emoji_id=__se;}\n' +
         indent + '        }else{\n' +
         indent + '            int __sp=__p.getInt("wery_pcolor_id",-1);long __se=__p.getLong("wery_pcolor_emoji",0);\n' +
-        indent + '            if(__sp>=0||__se!=0){currentUser.profile_color=new org.telegram.tgnet.TLRPC.TL_peerColor();if(__sp>=0)currentUser.profile_color.color=__sp;currentUser.profile_color.[...]
+        indent + '            if(__sp>=0||__se!=0){currentUser.profile_color=new org.telegram.tgnet.TLRPC.TL_peerColor();if(__sp>=0)currentUser.profile_color.color=__sp;currentUser.profile_color.background_emoji_id=__se;}\n' +
         indent + '        }\n' +
         indent + '        if(currentUser.color!=null){\n' +
         indent + '            int __nc=currentUser.color.color;long __ne=currentUser.color.background_emoji_id;\n' +
         indent + '            if(__nc>=0||__ne!=0){__p.edit().putInt("wery_color_id",__nc).putLong("wery_color_emoji",__ne).apply();}\n' +
-        indent + '            else{int __sc=__p.getInt("wery_color_id",-1);long __sce=__p.getLong("wery_color_emoji",0);if(__sc>=0)currentUser.color.color=__sc;if(__sce!=0)currentUser.color.backg[...]
+        indent + '            else{int __sc=__p.getInt("wery_color_id",-1);long __sce=__p.getLong("wery_color_emoji",0);if(__sc>=0)currentUser.color.color=__sc;if(__sce!=0)currentUser.color.background_emoji_id=__sce;}\n' +
         indent + '        }else{\n' +
         indent + '            int __sc=__p.getInt("wery_color_id",-1);long __sce=__p.getLong("wery_color_emoji",0);\n' +
-        indent + '            if(__sc>=0||__sce!=0){currentUser.color=new org.telegram.tgnet.TLRPC.TL_peerColor();if(__sc>=0)currentUser.color.color=__sc;currentUser.color.background_emoji_id=__s[...]
+        indent + '            if(__sc>=0||__sce!=0){currentUser.color=new org.telegram.tgnet.TLRPC.TL_peerColor();if(__sc>=0)currentUser.color.color=__sc;currentUser.color.background_emoji_id=__sce;}\n' +
         indent + '        }\n' +
         indent + '    }\n' +
         indent + '} catch (Exception __e) {}\n' +
@@ -446,7 +447,7 @@ def patch_app_name(errors):
 
 
 def patch_drawer_layout(errors):
-    """З��меняет название Telegram на WeryGram в главном меню"""
+    """Заменяет название Telegram на WeryGram в главном меню"""
     files_to_check = [
         "LaunchActivity.java",
         "DrawerLayoutActivity.java",
@@ -462,12 +463,10 @@ def patch_drawer_layout(errors):
             print(f"↩ skip {fname}"); 
             return errors
         
-        # FIX: Используем метод с переменной, а не вложенное вызов
         if 'getString(R.string.AppName)' in text and 'wery' not in text:
-            old_pattern = 'getString(R.string.AppName)'
-            # Заменяем на правильное выражение: используем LocaleController для поддержки локализации
-            new_pattern = '(org.telegram.messenger.MessagesController.getGlobalMainSettings().getBoolean("wery_visual_premium",false) ? "WeryGram" : getString(R.string.AppName))'
-            text = text.replace(old_pattern, new_pattern, 1)
+            old = 'getString(R.string.AppName)'
+            new = '(org.telegram.messenger.MessagesController.getGlobalMainSettings().getBoolean("wery_visual_premium",false) ? "WeryGram" : getString(R.string.AppName))'
+            text = text.replace(old, new, 1)
             write(layout_file, text)
             print(f"✔ {fname}: app title patch")
             return errors
@@ -483,30 +482,27 @@ def patch_api_credentials(errors):
         if not bv: print("⚠ BuildVars.java не найден"); return errors
         text = read(bv)
         
-        if 'OFFICIAL_APP_ID' in text or API_ID in text:
+        if API_ID in text:
             print("↩ skip BuildVars (API уже установлены)"); return errors
         
-        # Ищем где задаются значения
+        # Ищем строки где задаются значения и заменяем их
         patterns = [
-            ('public static final int APP_ID', 'public static final int APP_ID = ' + API_ID + ';'),
-            ('public static final String APP_HASH', 'public static final String APP_HASH = "' + API_HASH + '";'),
-            ('BUILD_VAR_API_ID', 'BUILD_VAR_API_ID = ' + API_ID),
-            ('BUILD_VAR_API_HASH', 'BUILD_VAR_API_HASH = "' + API_HASH + '"'),
+            (r'public static final int APP_ID\s*=\s*\d+\s*;', 'public static final int APP_ID = ' + API_ID + ';'),
+            (r'public static final String APP_HASH\s*=\s*"[^"]*"\s*;', 'public static final String APP_HASH = "' + API_HASH + '";'),
+            (r'APP_ID\s*=\s*\d+\s*;', 'APP_ID = ' + API_ID + ';'),
+            (r'APP_HASH\s*=\s*"[^"]*"\s*;', 'APP_HASH = "' + API_HASH + '";'),
         ]
         
+        modified = False
         for pattern, replacement in patterns:
-            if pattern in text:
-                # Заменяем значение
-                import re
-                text = re.sub(
-                    pattern + r'\s*=\s*[^;]+;',
-                    replacement + ';',
-                    text,
-                    count=1
-                )
-                print(f"✔ BuildVars: {pattern} updated")
+            new_text = re_mod.sub(pattern, replacement, text, count=1)
+            if new_text != text:
+                text = new_text
+                modified = True
+                print(f"✔ BuildVars: updated API credentials")
         
-        write(bv, text)
+        if modified:
+            write(bv, text)
     except Exception as e:
         print(f"⚠ BuildVars patch failed: {e}")
     
