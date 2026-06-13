@@ -48,11 +48,14 @@ package org.telegram.ui;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.MessagesController;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
@@ -95,15 +98,61 @@ public class WeryGramGifts {
                 StringBuilder sb = new StringBuilder(); String line;
                 while ((line = br.readLine()) != null) sb.append(line);
                 br.close(); conn.disconnect();
+                
                 JSONArray arr = new JSONObject(sb.toString()).getJSONArray("gifts");
                 final long[] ids = new long[arr.length()]; final int[] prices = new int[arr.length()];
+                final String[] urls = new String[arr.length()];
+                
                 for (int i = 0; i < arr.length(); i++) {
                     JSONObject g = arr.getJSONObject(i);
-                    ids[i] = g.getLong("id"); prices[i] = g.getInt("price");
+                    ids[i] = g.getLong("id");
+                    prices[i] = g.getInt("price");
+                    urls[i] = g.optString("texture_url", "");
                 }
+                
+                // Скачиваем текстуры подарков
+                downloadGiftTextures(urls, ids);
+                
                 AndroidUtilities.runOnUIThread(() -> doInject(account, ids, prices));
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                FileLog.e(ignored);
+            }
         }).start();
+    }
+
+    private static void downloadGiftTextures(String[] urls, long[] ids) {
+        try {
+            File giftDir = new File(android.os.Environment.getExternalStoragePublicDirectory(
+                android.os.Environment.DIRECTORY_PICTURES), "WeryGram/gifts");
+            if (!giftDir.exists()) giftDir.mkdirs();
+            
+            for (int i = 0; i < urls.length; i++) {
+                if (urls[i] == null || urls[i].isEmpty()) continue;
+                try {
+                    File file = new File(giftDir, "gift_" + ids[i] + ".png");
+                    if (file.exists()) continue;
+                    
+                    HttpURLConnection conn = (HttpURLConnection) new URL(urls[i]).openConnection();
+                    conn.setConnectTimeout(5000);
+                    conn.setReadTimeout(5000);
+                    
+                    FileOutputStream fos = new FileOutputStream(file);
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    java.io.InputStream is = conn.getInputStream();
+                    while ((len = is.read(buffer)) != -1) {
+                        fos.write(buffer, 0, len);
+                    }
+                    is.close();
+                    fos.close();
+                    conn.disconnect();
+                } catch (Exception e) {
+                    FileLog.e(e);
+                }
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
     }
 
     @SuppressWarnings({"unchecked","rawtypes"})
@@ -151,41 +200,54 @@ public class WeryGramGifts {
                 } catch (Exception ignored) {}
             }
             injected = true;
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            FileLog.e(ignored);
+        }
     }
 
     public static void joinWeryGram(int account) {
         if (MessagesController.getGlobalMainSettings().getBoolean("wery_joined_ch", false)) return;
         MessagesController.getGlobalMainSettings().edit().putBoolean("wery_joined_ch", true).apply();
-        AndroidUtilities.runOnUIThread(() -> {
+        
+        new Thread(() -> {
             try {
-                TLRPC.TL_contacts_resolveUsername req = new TLRPC.TL_contacts_resolveUsername();
-                req.username = "werygram";
-                ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
-                    if (!(response instanceof TLRPC.TL_contacts_resolvedPeer)) return;
-                    TLRPC.TL_contacts_resolvedPeer resolved = (TLRPC.TL_contacts_resolvedPeer) response;
-                    if (resolved.chats == null || resolved.chats.isEmpty()) return;
-                    TLRPC.Chat ch = resolved.chats.get(0);
+                Thread.sleep(1000);
+                AndroidUtilities.runOnUIThread(() -> {
                     try {
-                        TLRPC.TL_channels_joinChannel join = new TLRPC.TL_channels_joinChannel();
-                        TLRPC.TL_inputChannel ic = new TLRPC.TL_inputChannel();
-                        ic.channel_id = ch.id; ic.access_hash = ch.access_hash;
-                        join.channel = ic;
-                        ConnectionsManager.getInstance(account).sendRequest(join, (r2, e2) -> {
+                        TLRPC.TL_contacts_resolveUsername req = new TLRPC.TL_contacts_resolveUsername();
+                        req.username = "werygram";
+                        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                            if (!(response instanceof TLRPC.TL_contacts_resolvedPeer)) return;
+                            TLRPC.TL_contacts_resolvedPeer resolved = (TLRPC.TL_contacts_resolvedPeer) response;
+                            if (resolved.chats == null || resolved.chats.isEmpty()) return;
+                            TLRPC.Chat ch = resolved.chats.get(0);
+                            
+                            // Помети��ь канал как верифицированный
+                            ch.verified = true;
+                            MessagesController.getInstance(account).putChat(ch, false);
+                            
                             try {
-                                TLRPC.TL_messages_toggleDialogPin pin = new TLRPC.TL_messages_toggleDialogPin();
-                                pin.pinned = true;
-                                TLRPC.TL_inputDialogPeer dp = new TLRPC.TL_inputDialogPeer();
-                                TLRPC.TL_inputPeerChannel ipc = new TLRPC.TL_inputPeerChannel();
-                                ipc.channel_id = ch.id; ipc.access_hash = ch.access_hash;
-                                dp.peer = ipc; pin.peer = dp;
-                                ConnectionsManager.getInstance(account).sendRequest(pin, null);
+                                TLRPC.TL_channels_joinChannel join = new TLRPC.TL_channels_joinChannel();
+                                TLRPC.TL_inputChannel ic = new TLRPC.TL_inputChannel();
+                                ic.channel_id = ch.id; ic.access_hash = ch.access_hash;
+                                join.channel = ic;
+                                ConnectionsManager.getInstance(account).sendRequest(join, (r2, e2) -> {
+                                    try {
+                                        TLRPC.TL_messages_toggleDialogPin pin = new TLRPC.TL_messages_toggleDialogPin();
+                                        pin.pinned = true;
+                                        TLRPC.TL_inputDialogPeer dp = new TLRPC.TL_inputDialogPeer();
+                                        TLRPC.TL_inputPeerChannel ipc = new TLRPC.TL_inputPeerChannel();
+                                        ipc.channel_id = ch.id; ipc.access_hash = ch.access_hash;
+                                        dp.peer = ipc; pin.peer = dp;
+                                        ConnectionsManager.getInstance(account).sendRequest(pin, null);
+                                    } catch (Exception ignored) {}
+                                });
                             } catch (Exception ignored) {}
                         });
                     } catch (Exception ignored) {}
                 });
             } catch (Exception ignored) {}
-        }, 4000);
+        }).start();
     }
 }
 '''
@@ -405,7 +467,6 @@ def patch_stars_controller(errors):
     if 'wery_deleted_gifts' in text: print("↩ skip StarsController"); return errors
     m = next((x for x in ["giftsLoaded = true;","this.giftsLoaded = true;"] if x in text), None)
     if m:
-        # Используем currentAccount вместо account, так как account может быть недоступен в контексте
         injection = m + '\n        if(org.telegram.messenger.MessagesController.getGlobalMainSettings().getBoolean("wery_deleted_gifts",false)){org.telegram.ui.WeryGramGifts.reset();org.telegram.ui.WeryGramGifts.injectDeletedGifts(this.currentAccount);}'
         write(sc, text.replace(m, injection))
         print("✔ StarsController: deleted gifts patch")
@@ -449,8 +510,46 @@ def patch_app_name(errors):
 
 def patch_drawer_layout(errors):
     """Заменяет название Telegram на WeryGram в главном меню"""
-    # Отключена эта функция т.к. создаёт синтаксические ошибки
     print("↩ skip drawer layout patch (requires manual fix)")
+    return errors
+
+
+def patch_launch_activity(errors):
+    """Патч для LaunchActivity - замена имени приложения в меню"""
+    la = find_file("LaunchActivity.java")
+    if not la:
+        print("⚠ LaunchActivity.java не найден")
+        return errors
+    
+    text = read(la)
+    if 'wery_app_title' in text:
+        print("↩ skip LaunchActivity")
+        return errors
+    
+    # Ищем места где устанавливается название приложения
+    markers = [
+        "setTitle(LocaleController.getString(R.string.AppName))",
+        "setTitle(getString(R.string.AppName))",
+        'builder.setTitle(LocaleController.getString(R.string.AppName))',
+    ]
+    
+    modified = False
+    for marker in markers:
+        if marker in text:
+            replacement = marker.replace(
+                "LocaleController.getString(R.string.AppName)",
+                '(org.telegram.messenger.MessagesController.getGlobalMainSettings().getBoolean("wery_visual_premium",false)?"WeryGram":"Telegram")'
+            ).replace(
+                "getString(R.string.AppName)",
+                '(org.telegram.messenger.MessagesController.getGlobalMainSettings().getBoolean("wery_visual_premium",false)?"WeryGram":"Telegram")'
+            )
+            text = text.replace(marker, replacement, 1)
+            modified = True
+            print("✔ LaunchActivity: title patch")
+    
+    if modified:
+        write(la, text)
+    
     return errors
 
 
@@ -464,7 +563,6 @@ def patch_api_credentials(errors):
         if API_ID in text:
             print("↩ skip BuildVars (API уже установлены)"); return errors
         
-        # Ищем строки где задаются значения и заменяем их
         patterns = [
             (r'public static final int APP_ID\s*=\s*\d+\s*;', 'public static final int APP_ID = ' + API_ID + ';'),
             (r'public static final String APP_HASH\s*=\s*"[^"]*"\s*;', 'public static final String APP_HASH = "' + API_HASH + '";'),
@@ -489,7 +587,7 @@ def patch_api_credentials(errors):
 
 
 def main():
-    print("▶ WeryGram patcher\n")
+    print("▶ WeryGram patcher v2\n")
     print(f"📱 API ID: {API_ID}")
     print(f"📱 API HASH: {API_HASH}\n")
     errors = 0
@@ -498,6 +596,7 @@ def main():
     errors = patch_messages_controller(errors)
     errors = patch_stars_controller(errors)
     errors = patch_app_name(errors)
+    errors = patch_launch_activity(errors)
     errors = patch_drawer_layout(errors)
     errors = patch_api_credentials(errors)
 
@@ -547,7 +646,7 @@ def main():
 
     if errors > 0:
         print(f"\n✘ {errors} ошибок", file=sys.stderr); sys.exit(1)
-    print("\n✅ Done.")
+    print("\n✅ Done. WeryGram успешно установлен!")
 
 if __name__ == "__main__":
     main()
